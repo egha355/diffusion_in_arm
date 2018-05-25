@@ -68,6 +68,7 @@ t=time.time()
 numberOfComputationalNodes = iron.ComputationalNumberOfNodesGet()
 computationalNodeNumber    = iron.ComputationalNodeNumberGet()
 
+print numberOfComputationalNodes, computationalNodeNumber
 #!#ifndef NOMPIMOD
 #!  USE MPI
 #!#endif
@@ -151,12 +152,12 @@ analyticFieldUserNumber     = 14
 #LENGTH = 4.0
 
 # Set the time parameters
-timeIncrement   = 0.001
+timeIncrement   = 0.0001
 startTime       = 0.0
-stopTime  = 0.8001
+stopTime  = 3.2001
 
 # Set the output parameters
-DYNAMIC_SOLVER_DIFFUSION_OUTPUT_FREQUENCY = 10
+DYNAMIC_SOLVER_DIFFUSION_OUTPUT_FREQUENCY = 1000
 
 # Set the solver parameters
 #relativeTolerance   = 1.0E-05  # default: 1.0E-05
@@ -480,14 +481,13 @@ with open(FileName_ele, "r") as f:
                 leftUlnaElements.append(elementNumber)
 # printing the head and the tail of the elements
             if elementNumber in head and printHead:
-              print elementNumber,localNodes
+              print elementNumber,localNodes,materialType
             elif elementNumber in tail and printTail:
-              print elementNumber,localNodes
+              print elementNumber,localNodes,materialType
 
             elements.NodesSet(elementNumber,localNodes)
-
-print "number of muscle Elements = %d\nnumber of right radius elements = %d\ntotal number of elements = %d\n"%(len(muscleElements)
-,len(leftRadiusElements),len(muscleElements)+len(leftRadiusElements)+len(leftHumerusElements)+len(leftUlnaElements))
+print "number of muscle Elements = %d\nnumber of left Ulna elements = %d\ntotal number of elements = %d\n"%(len(muscleElements)
+,len(leftUlnaElements),len(muscleElements)+len(leftRadiusElements)+len(leftHumerusElements)+len(leftUlnaElements))
 
 print "Elapsed time after reading ele file is: ", time.time()-t
 raw_input("Press Enter to continue...")
@@ -590,6 +590,11 @@ print "Elapsed time before reading node file is: ", time.time()-t
 
 FileName_node = "MaxVol1000/correctedBoundaryMarker.node"
 
+# X input file is mm. if you want to keep it that way you need to multiply k and rho*c by factors of 10^-3 and 10^-9 respectively.
+Units = 1e0
+kFactor= 1e-3
+rhoCFactor = 1e-9
+
 printHead = True
 printTail = True
 head = range(5)
@@ -615,9 +620,9 @@ with open(FileName_node, "r") as f:
     for lineNum,line in enumerate(target):
         if lineNum !=0:
           nodeNumber = int(target[lineNum][0])+offset
-          x = float(target[lineNum][1])
-          y = float(target[lineNum][2])
-          z = float(target[lineNum][3])
+          x = float(target[lineNum][1]) * Units
+          y = float(target[lineNum][2]) * Units
+          z = float(target[lineNum][3]) * Units
           boundaryMarker = int(target[lineNum][4])
           if boundaryMarker == skinMarker:
             boundary.append(nodeNumber)
@@ -768,25 +773,47 @@ alpha = K_Conductivity/(Rho_Density*Cp_SpecificHeat) #Diffusivity
 #componentNumber = 2 conductivity
 #componentNumber = 3 conductivity
 #componentNumber = 4 rho*cp
+
 for elementNumber in muscleElements:
     materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
-elementNumber,1, 0.42*1e-3)
+elementNumber,1, 0.42*kFactor/4.0e6*rhoCFactor) #0.42*1e-3
     materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
-elementNumber,2, 0.42*1e-3)
+elementNumber,2, 0.42*kFactor/4.0e6*rhoCFactor)
     materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
-elementNumber,3, 0.42*1e-3)
+elementNumber,3, 0.42*kFactor/4.0e6*rhoCFactor)
     materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
-elementNumber,4, 4.0e6*1e-9)
+elementNumber,4, 4.0e6*rhoCFactor/4.0e6*rhoCFactor)  #4.0e6*1e-9
 
 for elementNumber in leftRadiusElements:
     materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
-elementNumber,1, 0.75*1e-3)
+elementNumber,1, 0.75*kFactor/2.3e6*rhoCFactor)
     materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
-elementNumber,2, 0.75*1e-3)
+elementNumber,2, 0.75*kFactor/2.3e6*rhoCFactor)
     materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
-elementNumber,3, 0.75*1e-3)
+elementNumber,3, 0.75*kFactor/2.3e6*rhoCFactor)
     materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
-elementNumber,4, 2.3e6*1e-9)
+elementNumber,4, 2.3e6*kFactor/2.3e6*rhoCFactor)
+
+for elementNumber in leftHumerusElements:
+    materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
+elementNumber,1, 0.75*kFactor/2.3e6*rhoCFactor)
+    materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
+elementNumber,2, 0.75*kFactor/2.3e6*rhoCFactor)
+    materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
+elementNumber,3, 0.75*kFactor/2.3e6*rhoCFactor)
+    materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
+elementNumber,4, 2.3e6*rhoCFactor/2.3e6*rhoCFactor)
+
+for elementNumber in leftUlnaElements:
+    materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
+elementNumber,1, 0.75*kFactor/2.3e6*rhoCFactor)
+    materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
+elementNumber,2, 0.75*kFactor/2.3e6*rhoCFactor)
+    materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
+elementNumber,3, 0.75*kFactor/2.3e6*rhoCFactor)
+    materialsField.ParameterSetUpdateElement(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES, 
+elementNumber,4, 2.3e6*rhoCFactor/2.3e6*rhoCFactor)
+
 #================================================================================================================================
 #  Source Field
 #================================================================================================================================
@@ -1462,8 +1489,8 @@ print "Total Number of nodes = %d " %numberOfNodes
 print "Calculation Time = %3.4f" %elapsed
 print "Problem solved!"
 print "#"
-print "number of muscle Elements = %d\nnumber of right radius elements = %d\ntotal number of elements = %d\n"%(len(muscleElements)
-,len(leftRadiusElements),len(muscleElements)+len(leftRadiusElements))
+print "number of muscle Elements = %d\nnumber of left radius elements = %d\nHumerus=%d\nUlna=%d\ntotal number of elements = %d\n"%(
+len(muscleElements),len(leftRadiusElements),len(leftHumerusElements),len(leftUlnaElements))
 print "number of boundary nodes = %d"%len(boundary)
 print "Elapsed time: ", time.time()-t
 #!# Export results
